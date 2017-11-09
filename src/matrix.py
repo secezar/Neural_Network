@@ -16,11 +16,11 @@ def multiply(a, b):
 def transpose(a):
     return [list(x) for x in zip(*a)]
 
-print(transpose([[1,2]]))
-print(multiply([[1,2,3], [1,2,3], [1,2,3]], transpose([[1,2,3]])))
 
-import numpy as np
+def row_sum(a):
+    return [sum(row) for row in a]
 
-a = np.matrix([[1,2,3], [1,2,3], [1,2,3]])
-b = np.matrix([[1,2,3]])
-print(a * b.T)
+
+def plus(a, val):
+    added = [[col + val for col in row] for row in a]
+    return added

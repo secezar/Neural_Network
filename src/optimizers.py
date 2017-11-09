@@ -1,3 +1,2 @@
-import keras
-
 def SGD(x):
+    pass
