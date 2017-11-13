@@ -4,7 +4,7 @@ import numpy
 
 
 def sigmoid(x):
-    return (1 /(1 + exp(-x)))
+    return (1 /(1 + exp(-round(x, 6))))
 
 
 def d_sigmoid(x):
