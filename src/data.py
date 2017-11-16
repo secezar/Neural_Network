@@ -3,8 +3,8 @@ import cv2
 import numpy as np
 
 class Data:
-    def __init__(self):
-        self.data = []
+    def __init__(self, data=[]):
+        self.data = data
         self.labels = []
 
     def load_dir_dataset(self, dir_path):

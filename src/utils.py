@@ -1,7 +1,17 @@
 from random import random, uniform
 
 import numpy as np
-from  matrix import mean
+import pickle
+
+from  matrix import mean, transpose
+
+
+def import_model(path):
+    return pickle.load(open(path, 'rb'))
+
+
+def export_model(model, path):
+    pickle.dump(model, open(path, 'wb'))
 
 
 def initialize_weights(weights_range=(-1, 1), input_shape=(0,0)):
@@ -34,6 +44,7 @@ def to_label(y):
         if y[i] == 1:
             return i
 
+
 def vectorize_data(matrix):
     return np.reshape(matrix, (matrix.shape[0], 1, matrix.shape[1] * matrix.shape[2]))
 
@@ -43,8 +54,8 @@ def batch_errors_mean(batch):
     for sample in range(len(batch)):
         for i in range(len(batch[sample])):
             layers[i].append(batch[sample][i][0])
-    return [[(mean(elem)) for elem in zip(*layer)] for layer in layers]
-
+    a = [[[[(mean(elem)) for elem in zip(*layer)]] for layer in layers]]
+    return a
 
 flatten = lambda l: [item for sublist in l for item in sublist]
 

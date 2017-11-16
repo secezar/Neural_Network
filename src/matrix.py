@@ -27,6 +27,12 @@ def matrix_plus(a, b):
     return [list(map(add, a[i], b[i])) for i in range(len(a))]
 
 
+def matrix_square(a, b):
+    if len(a) != len(b) or len(a[0]) != len(b[0]):
+        raise ValueError("Dimension mismatch: {}x{} is not {}x{}".format(len(a), len(a[0]), len(b), len(b[0])))
+    return [list(map(pow, a[i], b[i])) for i in range(len(a))]
+
+
 def scalar_plus(a, val):
     added = [[col + val for col in row] for row in a]
     return added
@@ -36,6 +42,10 @@ def scalar_mul(a, val):
     multiplied = [[col * val for col in row] for row in a]
     return multiplied
 
+
+def scalar_power(a, val):
+    powered = [[col ** val for col in row] for row in a]
+    return powered
 
 def mean(vector):
     return sum(vector)/len(vector)
