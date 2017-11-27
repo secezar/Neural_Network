@@ -14,7 +14,7 @@ class Data:
         return np.array(self.data), np.array(self.labels)
 
     def load(self, path):
-        return cv2.imread(path)
+        return cv2.cvtColor(cv2.imread(path), cv2.COLOR_BGR2GRAY)
 
     def load_x_dataset(self, array_path):
         assert array_path[-4:] == ".npy", "{}".format(array_path[-4:])

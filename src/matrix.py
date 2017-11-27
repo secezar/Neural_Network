@@ -1,4 +1,4 @@
-from operator import mul, add
+from operator import mul, add, sub
 
 
 def dot(a, b):
@@ -27,6 +27,12 @@ def matrix_plus(a, b):
     return [list(map(add, a[i], b[i])) for i in range(len(a))]
 
 
+def matrix_sub(a, b):
+    if len(a) != len(b) or len(a[0]) != len(b[0]):
+        raise ValueError("Dimension mismatch: {}x{} is not {}x{}".format(len(a), len(a[0]), len(b), len(b[0])))
+    return [list(map(sub, a[i], b[i])) for i in range(len(a))]
+
+
 def matrix_square(a, b):
     if len(a) != len(b) or len(a[0]) != len(b[0]):
         raise ValueError("Dimension mismatch: {}x{} is not {}x{}".format(len(a), len(a[0]), len(b), len(b[0])))
@@ -36,6 +42,11 @@ def matrix_square(a, b):
 def scalar_plus(a, val):
     added = [[col + val for col in row] for row in a]
     return added
+
+
+def scalar_minus(a, val):
+    subtracted = [[col - val for col in row] for row in a]
+    return subtracted
 
 
 def scalar_mul(a, val):

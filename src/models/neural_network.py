@@ -1,14 +1,13 @@
 from random import shuffle
 
 import numpy as np
-from scipy.misc import imresize
 
 from activations import sigmoid, d_sigmoid
+from data import Data
 from loss import squared_error, d_squared_error
-from matrix import dot, multiply, transpose, mean, scalar_mul, matrix_plus
-from utils import initialize_bias, initialize_weights, get_split, vectorize_data, to_categorical, flatten, get_batches, \
+from matrix import dot, multiply, transpose, mean, scalar_mul, matrix_plus, matrix_sub
+from utils import initialize_bias, initialize_weights, get_split, vectorize_data, to_categorical, get_batches, \
     batch_errors_mean, to_label
-import pickle
 
 
 class OutputLayer:
@@ -67,35 +66,46 @@ class Dense:
 
 
 class Sequential:
-    def __init__(self, layers=[], optimizer='SGD', error='d_squared_error'):
-        self.layers = layers
+    def __init__(self, layers=None, optimizer='SGD', error='squared_error'):
+        self.layers = [] if layers is None else layers
         self.optimizer = optimizer
         self.output = None
+        self.error = squared_error
         self.d_error = d_squared_error
         self.training_errors = []
 
     def add(self, layer):
         self.layers.append(layer)
 
-    def train(self, x, y, batch_size=4, epochs=100, eta=0.1,
+    def train(self, x, y, batch_size=4, epochs=500, eta=0.1,
               shuffle_data=True, validation_split=0.1, test_split=0.1,
-              validation_data=None):
+              validation_data=None, test_data=None, test_labels=None):
         labeled_data = list(zip(x, y))
         shuffle(labeled_data)
-        train_data, validation_data_, test_data = self.split_data(labeled_data, test_split, validation_split)
+        train_data, validation_data_, test_data_ = self.split_data(labeled_data, test_split, validation_split)
         if validation_data is None:
-            validation_data = list(zip(*validation_data_))
+            validation_data = list(zip(*labeled_data))
+        validation_scores = []
         for epoch in range(epochs):
             if shuffle_data:
                 shuffle(train_data)
-            print("Epoch: {}".format(epoch))
+            # print("Epoch: {}".format(epoch))
+            moments = [[[0 for _ in range(len(layer.weights[i]))] for i in range(len(layer.weights))]
+                       for layer in self.layers]
             for batch in get_batches(batch_size, train_data):
-                self.batch_update(batch, eta)
-            self.training_errors.append(self.validation_error(*validation_data))
+                self.batch_update(batch, eta, moments=moments)
+            mean_epoch_errors = self.validation_error(*validation_data)[0]
+            epoch_loss = sum(mean_epoch_errors) / len(mean_epoch_errors)
+            print("Loss: {}".format(epoch_loss))
+            self.training_errors.append(epoch_loss)
             validate_result = self.validate(*validation_data)
+            validation_scores.append(validate_result)
+            print("-----------------EPOCH {}------------------".format(epoch))
             print("Validation: {}".format(validate_result))
+            for x, y in zip(test_data, test_labels):
+                print(self.predict(x), to_label(y))
 
-    def batch_update(self, batch, eta):
+    def batch_update(self, batch, eta, moments=None):
         batch_errors = []
         for sample, label in batch:
             self.calculate_activation(sample)
@@ -108,6 +118,22 @@ class Sequential:
             self.layers[i].weights = matrix_plus(self.layers[i].weights, weight_update_values)
             self.layers[i].bias = matrix_plus(self.layers[i].bias, scalar_mul(batch_errors[0][i], eta))
         return batch_errors[0][-1]
+
+    def momentum(self, batch, eta, momentum=0.9, moments=None):
+        batch_errors = []
+        for sample, label in batch:
+            self.calculate_activation(sample)
+            batch_errors.append(self._calculate_errors(label))
+        for i in range(len(batch)):
+            batch_errors[i] = batch_errors[i][::-1]
+        batch_errors = batch_errors_mean(batch_errors)
+        for i in range(len(self.layers) - 1, 0, -1):
+            weight_update_values = scalar_mul(multiply(transpose(batch_errors[0][i]), self.layers[i].input), eta)
+            v = matrix_sub(scalar_mul(moments[i], momentum), weight_update_values)
+            moments[i] = v
+            self.layers[i].weights = matrix_plus(self.layers[i].weights, v)
+            self.layers[i].bias = matrix_plus(self.layers[i].bias, scalar_mul(batch_errors[0][i], eta))
+        return moments
 
     def _calculate_errors(self, label):
         errors = []
@@ -138,6 +164,7 @@ class Sequential:
         errors = 0
         for i in range(x_size):
             result = self.predict(x[i])
+            # print(("input: {} \n, y: {}, result: {}".format(x[i], to_label(y[i]), result)))
             errors += int(to_label(y[i]) != result)
         return 1 - (errors / x_size)
 
@@ -145,8 +172,9 @@ class Sequential:
         output = []
         error_function = self.layers[-1].error
         for i in range(len(xs)):
-            output.append(error_function(ys[i], self.calculate_activation(xs[i])))
-        return transpose(mean(transpose(output)))
+            output.append(error_function(ys[i], self.calculate_activation(xs[i]))[0])
+        label_validation_errors = transpose(output)
+        return [[mean(label_validation_errors[i]) for i in range(len(label_validation_errors))]]
 
     def split_data(self, labeled_data, test_split, validation_split):
         data_test_split = len(labeled_data) * test_split
@@ -165,20 +193,31 @@ def main():
     # x_train = np.array([255 - imresize(x, (10, 7), interp='bilinear', mode=None) for x in x_train])
     # x_train = x_train / 255
     # y_train = to_categorical(y_train)
-    data = np.load("/home/piotr/PWr/SN-L/Neural_Network/visualization_data.npy")
-    data = data / 255
-    validation_data = data
+    # validation_data = data
     # data = np.concatenate((data, x_train), axis=0)
-    labels = np.load("/home/piotr/PWr/SN-L/Neural_Network/hot_labels.npy")
-    validation_labels = labels
+    # validation_labels = labels
     # labels = np.concatenate((labels, y_train), axis=0)
+    times = []
+    neurons_numbers = []
+    # for neuron_number in range(100, 500, 10):
+    data = np.load("/home/piotr/PWr/SN-L/Neural_Network/visualization_data.npy")
+    labels = np.load("/home/piotr/PWr/SN-L/Neural_Network/hot_labels.npy")
+    data_load = Data()
+    test_data, test_labels = data_load.load_dir_dataset("/home/piotr/PWr/SN-L/Neural_Network/data/gr4")
+
+    test_labels = to_categorical(test_labels)
+    print(test_data)
+    print(test_labels)
+    data = data / 255
+    test_data = test_data / 255
+    vectorized_data = vectorize_data(data).tolist()
+    vectorized_test = vectorize_data(test_data).tolist()
+    labels = labels.tolist()
+    test_labels = test_labels.tolist()
     model = Sequential()
     model.add(Dense(input_shape=(200, 70)))
     model.add(OutputLayer(input_shape=(10, 200)))
-
-    vectorized_data = vectorize_data(data).tolist()
-    model.train(vectorized_data, labels.tolist())#, validation_data=(vectorize_data(validation_data).tolist(),
-                                                 #                  validation_labels.tolist()))
+    model.train(vectorized_data, labels, test_data=vectorized_test, test_labels=test_labels)
 
 if __name__ == "__main__":
     main()
